@@ -1,0 +1,25 @@
+user-stories:
+  - title: "Example User Story 1"
+    points: 8
+    acceptance-criteria:
+      - "Acceptance Criteria 1"
+      - "Acceptance Criteria 2"
+      - "Acceptance Criteria 3"
+    tasks:
+      - title: "Example Task 1"
+        size: "XL"
+      - title: "Example Task 2"
+        size: "M"
+
+  - title: "Example User Story 2"
+    points: 2
+    acceptance-criteria:
+      - "Acceptance Criteria 1"
+      - "Acceptance Criteria 2"
+    tasks:
+      - title: "Example Task 1"
+        size: "XL"
+      - title: "Example Task 2"
+        size: "M"
+      - title: "Example Task 3"
+        size: "S"
