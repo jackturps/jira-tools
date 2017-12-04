@@ -6,17 +6,18 @@ import sys
 import yaml
 
 class JiraController:
-    def __init__(self, jira_endpoint, jira_username, jira_password):
+    def __init__(self, jira_endpoint, jira_username, jira_password, project):
         self.endpoint = jira_endpoint
         self.username = jira_username
         self.password = jira_password
+        self.project = project
 
 
-    def create_issue(project, issue_type, summary, descrition='', **kwargs):
+    def create_issue(self, issue_type, summary, descrition='', **kwargs):
         request_body = {
             'fields': {
                 'project': {
-                    'key': 'AETH'
+                    'key': self.project
                 },
                 'issuetype': {
                     'name': issue_type
@@ -36,7 +37,7 @@ class JiraController:
         return response.json()
 
 
-    def link_issues(key1, key2):
+    def link_issues(self, key1, key2):
         request_body = {
             "type": {
                 "name": "Relates"
@@ -58,21 +59,21 @@ class JiraController:
             raise RuntimeError('issue linking failed, %s, "%s"' % (response.status_code, response.reason))
 
 
-    def create_user_story(title, criterias, points):
-        print('creating "%s" with criteria:' % title)
+    def create_user_story(self, title, criterias, points):
+        print('creating "%s"' % (title))
 
         # Create the JIRA formatted string for acceptance criteria.
         criteria_str = 'h6. Acceptance Criteria:\n'
         for criteria in criterias:
             criteria_str += '* %s\n' % criteria
 
-        response_body = create_issue('AETH', 'User Story', title, criteria_str, customfield_10005=points)
+        response_body = self.create_issue('User Story', title, criteria_str, customfield_10005=points)
         return response_body['key']
 
 
-    def create_task(task, size, story_id):
-        response_body = create_issue('AETH', 'Scrum Task', task, customfield_11900={'value': size})
-        link_issues(story_id, response_body['key'])
+    def create_task(self, task, size, story_id):
+        response_body = self.create_issue('Scrum Task', task, customfield_11900={'value': size})
+        self.link_issues(story_id, response_body['key'])
 
 def progressBar(text, value, endvalue, bar_length=20):
     percent = float(value) / endvalue
@@ -84,17 +85,18 @@ def progressBar(text, value, endvalue, bar_length=20):
 
 
 def main():
-    if len(sys.argv) != 5:
-        print('expected: <endpoint> <jira-username> <jira-password> <config-path>')
+    if len(sys.argv) != 6:
+        print('expected: <endpoint> <jira-username> <jira-password> <config-path> <project-key>')
         return
 
     jira_endpoint = sys.argv[1]
     jira_username = sys.argv[2]
     jira_password = sys.argv[3]
     config_path = sys.argv[4]
+    project_key = sys.argv[5]
 
     config = yaml.load(open(config_path, 'r'))
-    controller = JiraController(jira_endpoint, jira_username, jira_password)
+    controller = JiraController(jira_endpoint, jira_username, jira_password, project_key)
 
     for story_idx, story in enumerate(config['user-stories']):
         story_id = controller.create_user_story(story['title'], story['acceptance-criteria'], story['points'])
