@@ -1,9 +1,8 @@
 import json
-import os
 import requests
-import time
 import sys
 import yaml
+import jsonschema
 
 STORY_POINTS_KEY='customfield_10005'
 CUSTOMER_KEY='customfield_10400'
@@ -13,6 +12,92 @@ TASK_SIZE_KEY='customfield_11900'
 PEER_REVIEWERS_KEY='customfield_10700'
 
 '''
+This schema is used to validate any config yamls.
+'''
+CONFIG_SCHEMA = {
+    'type': 'object',
+    'properties': {
+        'config': {
+            'type': 'object',
+            'properties': {
+                'board_key': {
+                    'type': 'string',
+                    'minLength': 1,
+                },
+                'assigned_team': {
+                    'type': 'string',
+                    'minLength': 1,
+                },
+                'sprint': {
+                    'type': 'number',
+                },
+                'customer': {
+                    'type': 'string',
+                    'minLength': 1,
+                },
+                'peer_reviewers': {
+                    'type': 'array',
+                    'items': {
+                        'type': 'string',
+                    },
+                    'minItems': 1,
+                },
+            },
+            'required': ['board_key', 'assigned_team', 'sprint', 'customer', 'peer_reviewers'],
+            'additionalProperties': False,
+        },
+        'stories': {
+            'type': 'array',
+            'items': {
+                'type': 'object',
+                'properties': {
+                    'summary': {
+                        'type': 'string',
+                        'minLength': 1,
+                    },
+                    'description': {
+                        'type': 'string',
+                        'minLength': 1,
+                    },
+                    'acceptance_criteria': {
+                        'type': 'array',
+                        'items': {
+                            'type': 'string',
+                            'minLength': 1,
+                        },
+                        'minItems': 1,
+                    },
+                    'tasks': {
+                        'type': 'array',
+                        'items': {
+                            'type': 'object',
+                            'properties': {
+                                'summary': {
+                                    'type': 'string',
+                                    'minLength': 1,
+                                },
+                                'size': {
+                                    'type': 'string',
+                                    'enum': ['XS', 'S', 'M', 'L', 'XL'],
+                                }
+                            },
+                            'required': ['summary', 'size'],
+                            'additionalProperties': False,
+                        },
+                        'minItems': 1,
+                    }
+                },
+                'required': ['summary', 'description', 'acceptance_criteria', 'tasks'],
+                'additionalProperties': False,
+            },
+            'minItems': 1,
+        }
+    },
+    'required': ['config', 'stories'],
+    'additionalProperties': False,
+}
+
+'''
   TODO: Get sprint ID from a sprint name. Currently sprint ID is the sprint name(e.g '#86')
   plus 122. 
 '''
@@ -20,11 +105,11 @@ PEER_REVIEWERS_KEY='customfield_10700'
 class JiraController:
     # TODO: Get sprint ID from a sprint name. Currently sprint ID is the sprint name(e.g '#86') plus 122.
     @staticmethod
-    def _sprint_id_from_name(sprint_name):
+    def sprint_id_from_name(sprint_name):
         return sprint_name + 122
 
     @staticmethod
-    def _size_to_minutes(size):
+    def size_to_minutes(size):
         size_map = {
             'XL': 8 * 60,
             'L': 6 * 60,
@@ -43,9 +128,21 @@ class JiraController:
         self.password = jira_password
         self.project = project
         self.assigned_team = assigned_team
-        self.sprint_id = JiraController._sprint_id_from_name(sprint)
+        self.sprint_id = JiraController.sprint_id_from_name(sprint)
         self.customer = customer
         self.peer_reviewers = peer_reviewers
+
+    def send_jira_request(self, request_body):
+        response = requests.post('%s/rest/api/2/issue/' % self.endpoint,
+                                 json=request_body,
+                                 headers={
+                                     'Content-Type': 'application/json'
+                                 },
+                                 auth=(self.username, self.password))
+
+        if response.status_code != 201:
+            raise RuntimeError('User story creation failed, %s, "%s", %s' % (response.status_code, response.reason, response.json()))
+        return response.json()
 
     def create_user_story(self, summary, description, acceptance_criteria, points):
         description_str = 'h6. Description:\n' + description + '\n\nh6.Acceptance Criteria:\n* ' + \
@@ -72,16 +169,7 @@ class JiraController:
             }
         }
 
-        response = requests.post('%s/rest/api/2/issue/' % (self.endpoint),
-                                 json=request_body,
-                                 headers={
-                                     'Content-Type': 'application/json'
-                                 },
-                                 auth=(self.username, self.password))
-
-        if response.status_code != 201:
-            raise RuntimeError('User story creation failed, %s, "%s", %s' % (response.status_code, response.reason, response.json()))
-        return response.json()
+        return self.send_jira_request(request_body)
 
     def create_sub_task(self, parent_key, summary, size):
         request_body = {
@@ -109,23 +197,12 @@ class JiraController:
                     {'name': reviewer} for reviewer in self.peer_reviewers
                 ],
                 'timetracking': {
-                    'originalEstimate': JiraController._size_to_minutes(size)
+                    'originalEstimate': JiraController.size_to_minutes(size)
                 }
             }
         }
 
-        response = requests.post('%s/rest/api/2/issue/' % (self.endpoint),
-                                 json=request_body,
-                                 headers={
-                                     'Content-Type': 'application/json'
-                                 },
-                                 auth=(self.username, self.password))
-
-        if response.status_code != 201:
-            print(json.dumps(response.json(), indent=2))
-            print('\n\n')
-            raise RuntimeError('User story creation failed, %s, "%s", %s' % (response.status_code, response.reason, response.json()))
-        return response.json()
+        return self.send_jira_request(request_body)
 
 
 def progress_bar(text, value, end_value, bar_length=20):
@@ -148,6 +225,8 @@ def main():
     config_path = sys.argv[4]
 
     config_file = yaml.load(open(config_path, 'r'))
+    jsonschema.validate(config_file, CONFIG_SCHEMA)
+
     config = config_file['config']
     stories = config_file['stories']
 
@@ -156,17 +235,17 @@ def main():
                                 config['customer'], config['peer_reviewers'])
 
     for story_idx, story in enumerate(stories):
-
-        total_minute = sum( [ JiraController._size_to_minutes(task['size']) for task in story['tasks'] ] )
+        # Get the total number of time for a user story from it's tasks.
+        total_minute = sum([JiraController.size_to_minutes(task['size']) for task in story['tasks']])
         story_json = controller.create_user_story(story['summary'], story['description'],
                                                   story['acceptance_criteria'], total_minute // 60)
 
+        # Create subtasks and attach them to the user story.
         task_parent = story_json['key']
         for task_idx, task in enumerate(story['tasks']):
             controller.create_sub_task(task_parent, task['summary'], task['size'])
             progress_bar('Story %d Progress' % story_idx, task_idx, len(story['tasks']) - 1, bar_length=20)
         sys.stdout.write('\n')
-
 
 if __name__ == "__main__":
     main()
