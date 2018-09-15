@@ -101,7 +101,6 @@ CONFIG_SCHEMA = {
   TODO: Get sprint ID from a sprint name. Currently sprint ID is the sprint name(e.g '#86')
   plus 122. 
 '''
-
 class JiraController:
     # TODO: Get sprint ID from a sprint name. Currently sprint ID is the sprint name(e.g '#86') plus 122.
     @staticmethod
@@ -246,6 +245,7 @@ def main():
             controller.create_sub_task(task_parent, task['summary'], task['size'])
             progress_bar('Story %d Progress' % story_idx, task_idx, len(story['tasks']) - 1, bar_length=20)
         sys.stdout.write('\n')
+
 
 if __name__ == "__main__":
     main()
