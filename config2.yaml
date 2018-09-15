@@ -15,10 +15,10 @@ stories:
       - 'this is criteria 2.'
 
     tasks:
-      - title: 'Test task 1'
+      - summary: 'Test task 1'
         size: 'XL'
 
-      - title: 'Test task 2'
+      - summary: 'Test task 2'
         size: 'M'
 
 

@@ -86,7 +86,7 @@ class JiraController:
         return response.json()
 
 
-    def create_sub_task(self, parent_key, summary):
+    def create_sub_task(self, parent_key, summary, size):
         request_body = {
             'fields': {
                 'project': {
@@ -100,21 +100,19 @@ class JiraController:
                 },
                 'summary': summary,
                 CUSTOMER_KEY: {
-                    'name': 'jack.turpitt'
+                    'name': self.customer
                 },
                 TASK_SIZE_KEY: {
-                    'value': 'XL'
+                    'value': size
                 },
                 ASSIGNED_TEAM_KEY: {
-                    'name': 'rapid'
+                    'name': self.assigned_team
                 },
                 PEER_REVIEWERS_KEY: [
-                    {
-                        'name': 'jack.turpitt'
-                    }
+                    {'name': reviewer} for reviewer in self.peer_reviewers
                 ],
                 'timetracking': {
-                    'originalEstimate': '10'
+                    'originalEstimate': JiraController._size_to_minutes(size)
                 }
             }
         }
@@ -169,7 +167,9 @@ def main():
                                                   story['acceptance_criteria'], total_minute // 60)
 
 
+        task_parent = story_json['key']
         for task in story['tasks']:
+            controller.create_sub_task(task_parent, task['summary'], task['size'])
 
 
 
