@@ -21,5 +21,30 @@ stories:
       - summary: 'Test task 2'
         size: 'M'
 
+      - summary: 'Test task 3'
+        size: 'XL'
+
+      - summary: 'Test task 4'
+        size: 'M'
+
+  - summary: 'This is a second test story'
+    description: 'Welcome to my second test story :)'
+    acceptance_criteria:
+      - 'this is criteria 1.'
+      - 'this is criteria 2.'
+
+    tasks:
+      - summary: 'Test task 1'
+        size: 'XL'
+
+      - summary: 'Test task 2'
+        size: 'M'
+
+      - summary: 'Test task 3'
+        size: 'XL'
+
+      - summary: 'Test task 4'
+        size: 'M'
+
 
 

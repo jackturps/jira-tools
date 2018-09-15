@@ -36,7 +36,6 @@ class JiraController:
             raise RuntimeError('Unrecognised size \'%s\'' % size)
         return size_map[size]
 
-
     def __init__(self, jira_endpoint, jira_username, jira_password,
                  project, assigned_team, sprint, customer, peer_reviewers):
         self.endpoint = jira_endpoint
@@ -47,7 +46,6 @@ class JiraController:
         self.sprint_id = JiraController._sprint_id_from_name(sprint)
         self.customer = customer
         self.peer_reviewers = peer_reviewers
-
 
     def create_user_story(self, summary, description, acceptance_criteria, points):
         description_str = 'h6. Description:\n' + description + '\n\nh6.Acceptance Criteria:\n* ' + \
@@ -84,7 +82,6 @@ class JiraController:
         if response.status_code != 201:
             raise RuntimeError('User story creation failed, %s, "%s", %s' % (response.status_code, response.reason, response.json()))
         return response.json()
-
 
     def create_sub_task(self, parent_key, summary, size):
         request_body = {
@@ -131,9 +128,8 @@ class JiraController:
         return response.json()
 
 
-
-def progressBar(text, value, endvalue, bar_length=20):
-    percent = float(value) / endvalue
+def progress_bar(text, value, end_value, bar_length=20):
+    percent = float(value) / end_value
     arrow = '-' * int(round(percent * bar_length)-1) + '>'
     spaces = ' ' * (bar_length - len(arrow))
 
@@ -162,24 +158,14 @@ def main():
     for story_idx, story in enumerate(stories):
 
         total_minute = sum( [ JiraController._size_to_minutes(task['size']) for task in story['tasks'] ] )
-        print(total_minute)
         story_json = controller.create_user_story(story['summary'], story['description'],
                                                   story['acceptance_criteria'], total_minute // 60)
 
-
         task_parent = story_json['key']
-        for task in story['tasks']:
+        for task_idx, task in enumerate(story['tasks']):
             controller.create_sub_task(task_parent, task['summary'], task['size'])
-
-
-
-
-
-        # story_id = controller.create_user_story(story['title'], story['acceptance-criteria'], story['points'])
-        # for task_idx, task in enumerate(story['tasks']):
-        #     progressBar('Story %d Progress' % story_idx, task_idx, len(story['tasks']) - 1, bar_length=20)
-        #     controller.create_task(task['title'], task['size'], story_id)
-        # sys.stdout.write('\n')
+            progress_bar('Story %d Progress' % story_idx, task_idx, len(story['tasks']) - 1, bar_length=20)
+        sys.stdout.write('\n')
 
 
 if __name__ == "__main__":
