@@ -1,25 +1,25 @@
-user-stories:
-  - title: "Example User Story 1"
-    points: 0
-    acceptance-criteria:
-      - "Acceptance Criteria 1"
-      - "Acceptance Criteria 2"
-      - "Acceptance Criteria 3"
-    tasks:
-      - title: "Example Task 1"
-        size: "XL"
-      - title: "Example Task 2"
-        size: "M"
+config:
+  board_key: 'RAP'
+  assigned_team: 'rapid'
+  sprint: 86
+  customer: 'jack.turpitt'
+  peer_reviewers:
+    - 'Harrison Connel'
+    - 'Saquib Azmi'
 
-  - title: "Example User Story 2"
-    points: 0
-    acceptance-criteria:
-      - "Acceptance Criteria 1"
-      - "Acceptance Criteria 2"
+stories:
+  - summary: 'This is a test story!'
+    description: 'Welcome to my test story :)'
+    acceptance_criteria:
+      - 'this is criteria 1.'
+      - 'this is criteria 2.'
+
     tasks:
-      - title: "Example Task 1"
-        size: "XL"
-      - title: "Example Task 2"
-        size: "M"
-      - title: "Example Task 3"
-        size: "S"
+      - summary: 'Test task 1'
+        size: 'XL'
+
+      - summary: 'Test task 2'
+        size: 'M'
+
+
+
