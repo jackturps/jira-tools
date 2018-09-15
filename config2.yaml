@@ -1,0 +1,25 @@
+config:
+  board_key: 'RAP'
+  assigned_team: 'rapid'
+  sprint: 86
+  customer: 'jack.turpitt'
+  peer_reviewers:
+    - 'Harrison Connel'
+    - 'Saquib Azmi'
+
+stories:
+  - summary: 'This is a test story!'
+    description: 'Welcome to my test story :)'
+    acceptance_criteria:
+      - 'this is criteria 1.'
+      - 'this is criteria 2.'
+
+    tasks:
+      - title: 'Test task 1'
+        size: 'XL'
+
+      - title: 'Test task 2'
+        size: 'M'
+
+
+
