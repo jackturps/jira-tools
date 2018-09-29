@@ -3,6 +3,7 @@ import requests
 import sys
 import yaml
 import jsonschema
+import copy
 
 STORY_POINTS_KEY='customfield_10005'
 CUSTOMER_KEY='customfield_10400'
@@ -79,6 +80,10 @@ CONFIG_SCHEMA = {
                                 'size': {
                                     'type': 'string',
                                     'enum': ['XS', 'S', 'M', 'L', 'XL'],
+                                },
+                                'repeat': {
+                                    'type': 'integer',
+                                    'minimum': 1,
                                 }
                             },
                             'required': ['summary', 'size'],
@@ -127,7 +132,11 @@ class JiraController:
         self.password = jira_password
         self.project = project
         self.assigned_team = assigned_team
-        self.sprint_id = JiraController.sprint_id_from_name(sprint)
+
+        # TODO: Find a method to get sprint ID from sprint name.
+        # self.sprint_id = JiraController.sprint_id_from_name(sprint)
+
+        self.sprint_id = sprint
         self.customer = customer
         self.peer_reviewers = peer_reviewers
 
@@ -140,7 +149,7 @@ class JiraController:
                                  auth=(self.username, self.password))
 
         if response.status_code != 201:
-            raise RuntimeError('User story creation failed, %s, "%s", %s' % (response.status_code, response.reason, response.json()))
+            raise RuntimeError('User story creation failed, %s, "%s", %s' % (response.status_code, response.reason, response))
         return response.json()
 
     def create_user_story(self, summary, description, acceptance_criteria, points):
@@ -190,7 +199,8 @@ class JiraController:
                     'value': size
                 },
                 ASSIGNED_TEAM_KEY: {
-                    'name': self.assigned_team
+                    'name': self.assigned_team,
+                    'self': '%s/rest/api/2/group?groupname=%s' % (self.endpoint, self.assigned_team)
                 },
                 PEER_REVIEWERS_KEY: [
                     {'name': reviewer} for reviewer in self.peer_reviewers
@@ -200,7 +210,6 @@ class JiraController:
                 }
             }
         }
-
         return self.send_jira_request(request_body)
 
 
@@ -234,16 +243,28 @@ def main():
                                 config['customer'], config['peer_reviewers'])
 
     for story_idx, story in enumerate(stories):
+        # Expand repeated tasks.
+        expanded_tasks = []
+        for task in story['tasks']:
+            repeat_count = task['repeat'] if 'repeat' in task else 1
+            for repeat_idx in range(repeat_count):
+                tmp_task = copy.deepcopy(task)
+                if repeat_count > 1:
+                    tmp_task['summary'] = '%s pt. %s' % (tmp_task['summary'], repeat_idx + 1)
+                expanded_tasks.append(tmp_task)
+
         # Get the total number of time for a user story from it's tasks.
-        total_minute = sum([JiraController.size_to_minutes(task['size']) for task in story['tasks']])
+        total_minute = sum([JiraController.size_to_minutes(task['size']) for task in expanded_tasks])
         story_json = controller.create_user_story(story['summary'], story['description'],
                                                   story['acceptance_criteria'], total_minute // 60)
 
         # Create subtasks and attach them to the user story.
         task_parent = story_json['key']
-        for task_idx, task in enumerate(story['tasks']):
+
+        # Create all tasks for this story.
+        for task_idx, task in enumerate(expanded_tasks):
             controller.create_sub_task(task_parent, task['summary'], task['size'])
-            progress_bar('Story %d Progress' % story_idx, task_idx, len(story['tasks']) - 1, bar_length=20)
+            progress_bar('Story %d Progress' % story_idx, task_idx + 1, len(expanded_tasks), bar_length=20)
         sys.stdout.write('\n')
 
 

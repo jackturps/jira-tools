@@ -43,8 +43,9 @@ stories:
       - summary: 'Test task 3'
         size: 'XL'
 
-      - summary: 'Test task 4'
+      - summary: 'Repeated test task 1'
         size: 'M'
+        repeat: 3
 
 
 
