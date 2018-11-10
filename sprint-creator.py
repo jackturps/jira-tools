@@ -92,7 +92,7 @@ CONFIG_SCHEMA = {
                         'minItems': 1,
                     }
                 },
-                'required': ['summary', 'description', 'acceptance_criteria', 'tasks'],
+                'required': ['summary', 'acceptance_criteria', 'tasks'],
                 'additionalProperties': False,
             },
             'minItems': 1,
@@ -253,9 +253,12 @@ def main():
                     tmp_task['summary'] = '%s pt. %s' % (tmp_task['summary'], repeat_idx + 1)
                 expanded_tasks.append(tmp_task)
 
+        # Default description to summary if it is not given.
+        description_str = story['description'] if 'description' in story else story['summary']
+
         # Get the total number of time for a user story from it's tasks.
         total_minute = sum([JiraController.size_to_minutes(task['size']) for task in expanded_tasks])
-        story_json = controller.create_user_story(story['summary'], story['description'],
+        story_json = controller.create_user_story(story['summary'], description_str,
                                                   story['acceptance_criteria'], total_minute // 60)
 
         # Create subtasks and attach them to the user story.
