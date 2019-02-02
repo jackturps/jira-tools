@@ -1,0 +1,16 @@
+config:
+  board_key: 'RAP'
+  assigned_team: 'rapid'
+  sprint: 86
+  customer: 'jack.turpitt'
+  peer_reviewers:
+    - 'John Smith'
+    - 'Mary Jane'
+
+stories:
+  - sum: 'This is a test story!'
+    acc_cri:
+      - 'this is criteria 1.'
+      - 'this is criteria 2.'
+    tasks: 5
+    sizes: 'M'

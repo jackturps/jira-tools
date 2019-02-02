@@ -1,10 +1,10 @@
 import sys
 import yaml
 import jsonschema
-import copy
 
 from JiraController import JiraController
 from JiraController import progress_bar
+
 
 STORY_POINTS_KEY='customfield_10005'
 CUSTOMER_KEY='customfield_10400'
@@ -53,15 +53,15 @@ CONFIG_SCHEMA = {
             'items': {
                 'type': 'object',
                 'properties': {
-                    'summary': {
+                    'sum': {
                         'type': 'string',
                         'minLength': 1,
                     },
-                    'description': {
+                    'desc': {
                         'type': 'string',
                         'minLength': 1,
                     },
-                    'acceptance_criteria': {
+                    'acc_cri': {
                         'type': 'array',
                         'items': {
                             'type': 'string',
@@ -70,30 +70,15 @@ CONFIG_SCHEMA = {
                         'minItems': 1,
                     },
                     'tasks': {
-                        'type': 'array',
-                        'items': {
-                            'type': 'object',
-                            'properties': {
-                                'summary': {
-                                    'type': 'string',
-                                    'minLength': 1,
-                                },
-                                'size': {
-                                    'type': 'string',
-                                    'enum': ['XS', 'S', 'M', 'L', 'XL'],
-                                },
-                                'repeat': {
-                                    'type': 'integer',
-                                    'minimum': 1,
-                                }
-                            },
-                            'required': ['summary', 'size'],
-                            'additionalProperties': False,
-                        },
-                        'minItems': 1,
-                    }
+                        'type': 'integer',
+                        'minimum': 1,
+                    },
+                    'sizes': {
+                        'type': 'string',
+                        'enum': ['XS', 'S', 'M', 'L', 'XL'],
+                    },
                 },
-                'required': ['summary', 'acceptance_criteria', 'tasks'],
+                'required': ['sum', 'acc_cri', 'tasks', 'sizes'],
                 'additionalProperties': False,
             },
             'minItems': 1,
@@ -102,6 +87,7 @@ CONFIG_SCHEMA = {
     'required': ['config', 'stories'],
     'additionalProperties': False,
 }
+
 
 def main():
     if len(sys.argv) != 5:
@@ -126,21 +112,23 @@ def main():
     for story_idx, story in enumerate(stories):
         # Expand repeated tasks.
         expanded_tasks = []
-        for task in story['tasks']:
-            repeat_count = task['repeat'] if 'repeat' in task else 1
-            for repeat_idx in range(repeat_count):
-                tmp_task = copy.deepcopy(task)
-                if repeat_count > 1:
-                    tmp_task['summary'] = '%s pt. %s' % (tmp_task['summary'], repeat_idx + 1)
-                expanded_tasks.append(tmp_task)
+
+        # for task in story['tasks']:
+        repeat_count = story['tasks']
+        for repeat_idx in range(repeat_count):
+            tmp_task = {
+                'summary': '%s pt. %s' % (story['sum'], repeat_idx + 1),
+                'size': story['sizes']
+            }
+            expanded_tasks.append(tmp_task)
 
         # Default description to summary if it is not given.
-        description_str = story['description'] if 'description' in story else story['summary']
+        description_str = story['desc'] if 'desc' in story else story['sum']
 
         # Get the total number of time for a user story from it's tasks.
         total_minute = sum([JiraController.size_to_minutes(task['size']) for task in expanded_tasks])
-        story_json = controller.create_user_story(story['summary'], description_str,
-                                                  story['acceptance_criteria'], total_minute // 60)
+        story_json = controller.create_user_story(story['sum'], description_str,
+                                                  story['acc_cri'], total_minute // 60)
 
         # Create subtasks and attach them to the user story.
         task_parent = story_json['key']

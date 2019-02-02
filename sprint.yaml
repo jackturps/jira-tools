@@ -4,8 +4,8 @@ config:
   sprint: 86
   customer: 'jack.turpitt'
   peer_reviewers:
-    - 'Harrison Connel'
-    - 'Saquib Azmi'
+    - 'John Smith'
+    - 'Mary Jane'
 
 stories:
   - summary: 'This is a test story!'
