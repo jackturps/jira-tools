@@ -4,12 +4,9 @@ import sys
 import datetime
 import prettytable
 
-'''
-  TODO: Get sprint ID from a sprint name. Currently sprint ID is the sprint name(e.g '#86')
-  plus 122.
-'''
+HELP_STRING = 'expected: <endpoint> <jira-username> <jira-password> <project-label> <days> <summarise|dump>'
+
 class JiraController:
-    # TODO: Get sprint ID from a sprint name. Currently sprint ID is the sprint name(e.g '#86') plus 122.
     def __init__(self, jira_endpoint, jira_username, jira_password):
         self.endpoint = jira_endpoint
         self.username = jira_username
@@ -51,6 +48,10 @@ def get_cleansed_bugs(days, raw_bugs):
                             'from': history_item['fromString'],
                             'to': history_item['toString'],
                         })
+
+        # Order transitions chronologically.
+        if bug_key in cleansed_bugs:
+            cleansed_bugs[bug_key] = list(reversed(cleansed_bugs[bug_key]))
     return cleansed_bugs
 
 
@@ -92,8 +93,8 @@ def print_summary(bug_summary):
 
 
 def main():
-    if len(sys.argv) != 6:
-        print('expected: <endpoint> <jira-username> <jira-password> <project-label> <days>')
+    if len(sys.argv) != 7:
+        print(HELP_STRING)
         return
 
     jira_endpoint = sys.argv[1]
@@ -102,16 +103,21 @@ def main():
     project_label = sys.argv[4]
     days = int(sys.argv[5])
 
+    if sys.argv[6] not in ['summarise', 'dump']:
+        print(HELP_STRING)
+        return
+    summarise = (sys.argv[6] == 'summarise')
+
     controller = JiraController(jira_endpoint, jira_username, jira_password)
     raw_bugs = controller.get_bugs(project_label, days)
 
     bugs = get_cleansed_bugs(days, raw_bugs)
-    bug_summary = summarise_bugs(bugs)
 
-    # print(json.dumps(bugs, indent=2))
-    # print(json.dumps(bug_summary, indent=2))
-    print_bugs(bugs)
-    print_summary(bug_summary)
+    if summarise:
+        bug_summary = summarise_bugs(bugs)
+        print_summary(bug_summary)
+    else:
+        print_bugs(bugs)
 
 
 if __name__ == "__main__":
