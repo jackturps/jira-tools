@@ -1,4 +1,3 @@
-import json
 import requests
 import sys
 import datetime
@@ -89,7 +88,7 @@ def print_summary(bug_summary):
     table.field_names = ['From', 'To', 'Count']
     for summary in bug_summary:
         table.add_row([summary['from'], summary['to'], summary['count']])
-    print(table)
+    print(table.get_string(sortby='Count', reversesort=True))
 
 
 def main():
