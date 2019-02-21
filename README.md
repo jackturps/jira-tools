@@ -9,7 +9,7 @@ requests to create the required issues.
 ## Requirements
 
 ```
-pip3 install pyyaml jsonschema
+pip3 install pyyaml jsonschema prettytable
 ```
 
 ## Tools
