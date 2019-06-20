@@ -91,7 +91,7 @@ CONFIG_SCHEMA = {
 
 def main():
     if len(sys.argv) != 5:
-        print('expected: <endpoint> <jira-username> <jira-password> <config-path>')
+        print('expected: <endpoint> <jira-email> <jira-api-token> <config-path>')
         return
 
     jira_endpoint = sys.argv[1]
@@ -135,7 +135,7 @@ def main():
 
         # Create all tasks for this story.
         for task_idx, task in enumerate(expanded_tasks):
-            controller.create_sub_task(task_parent, task['summary'], task['size'])
+            controller.create_sub_task(task_parent, task['summary'], size=task['size'])
             progress_bar('Story %d Progress' % story_idx, task_idx + 1, len(expanded_tasks), bar_length=20)
         sys.stdout.write('\n')
 

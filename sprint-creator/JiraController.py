@@ -14,6 +14,14 @@ PEER_REVIEWERS_KEY='customfield_10700'
   plus 122.
 '''
 class JiraController:
+    size_map = {
+        'XL': 8 * 60,
+        'L': 6 * 60,
+        'M': 4 * 60,
+        'S': 2 * 60,
+        'XS': 1 * 60
+    }
+
     # TODO: Get sprint ID from a sprint name. Currently sprint ID is the sprint name(e.g '#86') plus 122.
     @staticmethod
     def sprint_id_from_name(sprint_name):
@@ -21,16 +29,9 @@ class JiraController:
 
     @staticmethod
     def size_to_minutes(size):
-        size_map = {
-            'XL': 8 * 60,
-            'L': 6 * 60,
-            'M': 4 * 60,
-            'S': 2 * 60,
-            'XS': 1 * 60
-        }
-        if size not in size_map:
+        if size not in JiraController.size_map:
             raise RuntimeError('Unrecognised size \'%s\'' % size)
-        return size_map[size]
+        return JiraController.size_map[size]
 
     def __init__(self, jira_endpoint, jira_username, jira_password,
                  project, assigned_team, sprint, customer, peer_reviewers):
@@ -47,18 +48,24 @@ class JiraController:
         self.customer = customer
         self.peer_reviewers = peer_reviewers
 
-    def send_jira_request(self, request_body):
-        response = requests.post('%s/rest/api/2/issue/' % self.endpoint,
+    def send_jira_request(self, request_body, url_extension='', query_params=''):
+        url = '%s/rest/api/2/issue/%s' % (self.endpoint, url_extension)
+        if query_params:
+            url = '%s?%s' % (url, query_params)
+
+        response = requests.post(url,
                                  json=request_body,
                                  headers={
                                      'Content-Type': 'application/json'
                                  },
                                  auth=(self.username, self.password))
 
-        if response.status_code != 201:
+        response_data = response.json() if response.text else None
+        if response.status_code < 200 or response.status_code > 299:
             raise RuntimeError('User story creation failed, %s, "%s", %s' % (response.status_code, response.reason,
-                                                                             response.json()))
-        return response.json()
+                                                                             response_data))
+
+        return response_data
 
     def create_user_story(self, summary, description, acceptance_criteria, points):
         description_str = 'h6. Description:\n' + description + '\n\nh6.Acceptance Criteria:\n* ' + \
@@ -87,7 +94,17 @@ class JiraController:
 
         return self.send_jira_request(request_body)
 
-    def create_sub_task(self, parent_key, summary, size):
+    def create_sub_task(self, parent_key, summary, size=None, hours=None):
+        assert (size is None) != (hours is None)
+
+        if size is not None:
+            size = size
+            hours = JiraController.size_to_minutes(size)
+        elif hours is not None:
+            # Pick the closest size based on the hours given.
+            hours = hours
+            size = min(JiraController.size_map.items(), key=lambda x: abs(hours*60 - x[1]))[0]
+
         request_body = {
             'fields': {
                 'project': {
@@ -119,6 +136,16 @@ class JiraController:
             }
         }
         return self.send_jira_request(request_body)
+
+    def approve_issue(self, issue_key):
+        request_body = {
+                "transition": {
+                    "id": 11
+                }
+        }
+        return self.send_jira_request(request_body,
+                                      url_extension='%s/transitions' % issue_key,
+                                      query_params='expand=transitions.fields')
 
 
 def progress_bar(text, value, end_value, bar_length=20):
