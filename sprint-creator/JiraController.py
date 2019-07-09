@@ -131,7 +131,7 @@ class JiraController:
                     {'name': reviewer} for reviewer in self.peer_reviewers
                 ],
                 'timetracking': {
-                    'originalEstimate': JiraController.size_to_minutes(size)
+                    'originalEstimate': hours
                 }
             }
         }
