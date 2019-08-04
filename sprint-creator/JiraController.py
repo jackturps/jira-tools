@@ -102,7 +102,7 @@ class JiraController:
             hours = JiraController.size_to_minutes(size)
         elif hours is not None:
             # Pick the closest size based on the hours given.
-            hours = hours
+            hours = hours * 60
             size = min(JiraController.size_map.items(), key=lambda x: abs(hours*60 - x[1]))[0]
 
         request_body = {
