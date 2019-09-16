@@ -3,7 +3,8 @@ import sys
 import datetime
 import prettytable
 
-HELP_STRING = 'expected: <endpoint> <jira-username> <jira-password> <project-label> <days> <summarise|dump>'
+HELP_STRING = 'expected: <endpoint> <jira-username> <jira-password> ' \
+              '<project-label> <start-date> <end-date> <summarise|dump>'
 
 class JiraController:
     def __init__(self, jira_endpoint, jira_username, jira_password):
@@ -11,8 +12,9 @@ class JiraController:
         self.username = jira_username
         self.password = jira_password
 
-    def get_bugs(self, project_label, days):
-        jql = 'jql=project=Bugs+and+"Project+Label"=%s+and+updated>-%sd' % (project_label, days)
+    def get_bugs(self, project_label, start_days, end_days):
+        jql = 'jql=project=Bugs+and+"Project+Label"=%s+and+updated>-%sd+and+updated<-%sd' % \
+              (project_label, start_days, end_days)
         other_params = 'expand=changelog'
         response = requests.get('%s/rest/api/2/search/?%s&%s' % (self.endpoint, other_params, jql),
                                  headers={
@@ -25,7 +27,7 @@ class JiraController:
         return response.json()
 
 
-def get_cleansed_bugs(days, raw_bugs):
+def get_cleansed_bugs(start_days, end_days, raw_bugs):
     cleansed_bugs = {}
     current_date = datetime.datetime.now()
     for bug in raw_bugs['issues']:
@@ -36,7 +38,8 @@ def get_cleansed_bugs(days, raw_bugs):
             history_date_str = history['created'].split('T')[0]
             history_date = datetime.datetime.strptime(history_date_str, '%Y-%m-%d')
 
-            if (current_date - history_date).days <= days:
+            issue_days = (current_date - history_date).days
+            if start_days >= issue_days >= end_days:
                 for history_item in history['items']:
                     if 'fieldId' in history_item and history_item['fieldId'] == 'status':
 
@@ -91,8 +94,19 @@ def print_summary(bug_summary):
     print(table.get_string(sortby='Count', reversesort=True))
 
 
+def get_date_from_str(date_str):
+    return datetime.datetime.strptime(date_str, '%d-%m-%Y').date()
+
+
+def get_days_since_date(date):
+    todays_date = datetime.date.today()
+    if date > todays_date:
+        raise RuntimeError('Given date was invalid')
+    return (todays_date - date).days
+
+
 def main():
-    if len(sys.argv) != 7:
+    if len(sys.argv) != 8:
         print(HELP_STRING)
         return
 
@@ -100,17 +114,18 @@ def main():
     jira_username = sys.argv[2]
     jira_password = sys.argv[3]
     project_label = sys.argv[4]
-    days = int(sys.argv[5])
+    start_days = get_days_since_date(get_date_from_str(sys.argv[5]))
+    end_days = get_days_since_date(get_date_from_str(sys.argv[6]))
 
-    if sys.argv[6] not in ['summarise', 'dump']:
+    if sys.argv[7] not in ['summarise', 'dump']:
         print(HELP_STRING)
         return
-    summarise = (sys.argv[6] == 'summarise')
+    summarise = (sys.argv[7] == 'summarise')
 
     controller = JiraController(jira_endpoint, jira_username, jira_password)
-    raw_bugs = controller.get_bugs(project_label, days)
+    raw_bugs = controller.get_bugs(project_label, start_days, end_days)
 
-    bugs = get_cleansed_bugs(days, raw_bugs)
+    bugs = get_cleansed_bugs(start_days, end_days, raw_bugs)
 
     if summarise:
         bug_summary = summarise_bugs(bugs)
