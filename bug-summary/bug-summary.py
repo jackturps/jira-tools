@@ -2,6 +2,10 @@ import requests
 import sys
 import datetime
 import prettytable
+import json
+
+SEVERITY_KEY = 'customfield_12010'
+PRIORITY_KEY = 'customfield_12009'
 
 HELP_STRING = 'expected: <endpoint> <jira-username> <jira-password> ' \
               '<project-label> <start-date> <end-date> <summarise|dump>'
@@ -32,6 +36,7 @@ def get_cleansed_bugs(start_days, end_days, raw_bugs):
     current_date = datetime.datetime.now()
     for bug in raw_bugs['issues']:
         bug_key = bug['key']
+        get_bug_level(bug)
 
         for history in bug['changelog']['histories']:
 
@@ -44,23 +49,40 @@ def get_cleansed_bugs(start_days, end_days, raw_bugs):
                     if 'fieldId' in history_item and history_item['fieldId'] == 'status':
 
                         if bug_key not in cleansed_bugs:
-                            cleansed_bugs[bug_key] = []
+                            cleansed_bugs[bug_key] = {
+                                'level': get_bug_level(bug),
+                                'transitions': []
+                            }
+                            # cleansed_bugs[bug_key] = []
 
-                        cleansed_bugs[bug_key].append({
+                        cleansed_bugs[bug_key]['transitions'].append({
                             'from': history_item['fromString'],
                             'to': history_item['toString'],
                         })
 
         # Order transitions chronologically.
         if bug_key in cleansed_bugs:
-            cleansed_bugs[bug_key] = list(reversed(cleansed_bugs[bug_key]))
+            cleansed_bugs[bug_key]['transitions'] = list(reversed(cleansed_bugs[bug_key]['transitions']))
     return cleansed_bugs
+
+
+def get_bug_level(bug):
+    if bug['fields'][SEVERITY_KEY] is None or bug['fields'][PRIORITY_KEY] is None:
+        return 'NA'
+
+    severity = int(bug['fields'][SEVERITY_KEY]['value'][1])
+    priority = int(bug['fields'][PRIORITY_KEY]['value'][1])
+    normalised_pri = (priority - 1) // 2
+    normalised_sev = (severity - 1) // 2
+    level = (normalised_pri * 2 + normalised_sev) + 1
+
+    return level
 
 
 def summarise_bugs(bugs):
     summary = {}
-    for key, transitions in bugs.items():
-        for transition in transitions:
+    for key, bug in bugs.items():
+        for transition in bug['transitions']:
             transition_key = '%s -> %s' % (transition['from'], transition['to'])
             if transition_key not in summary:
                 summary[transition_key] = {
@@ -76,13 +98,13 @@ def summarise_bugs(bugs):
 
 def print_bugs(bugs):
     table = prettytable.PrettyTable()
-    table.field_names = ['Bug', 'From', 'To']
-    for key, transitions in bugs.items():
-        first_trans = transitions[0]
-        table.add_row([key, first_trans['from'], first_trans['to']])
-        for trans in transitions[1:]:
-            table.add_row(['', trans['from'], trans['to']])
-        table.add_row(['', '', ''])
+    table.field_names = ['Bug', 'Level', 'From', 'To']
+    for key, bug in bugs.items():
+        first_trans = bug['transitions'][0]
+        table.add_row([key, bug['level'], first_trans['from'], first_trans['to']])
+        for trans in bug['transitions'][1:]:
+            table.add_row(['', '', trans['from'], trans['to']])
+        table.add_row(['', '', '', ''])
     print(table)
 
 
