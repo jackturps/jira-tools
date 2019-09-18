@@ -83,17 +83,24 @@ def summarise_bugs(bugs):
     summary = {}
     for key, bug in bugs.items():
         for transition in bug['transitions']:
-            transition_key = '%s -> %s' % (transition['from'], transition['to'])
-            if transition_key not in summary:
-                summary[transition_key] = {
-                    'count': 0,
-                    'to': transition['to'],
-                    'from': transition['from']
-                }
-            summary[transition_key]['count'] += 1
+            level = bug['level']
+            if level != 'NA':
+                transition_key = '%s -> %s' % (transition['from'], transition['to'])
+                if level not in summary:
+                    summary[level] = {}
+                if transition_key not in summary[level]:
+                    summary[level][transition_key] = {
+                        'count': 0,
+                        'to': transition['to'],
+                        'from': transition['from']
+                    }
+                summary[level][transition_key]['count'] += 1
 
-    # Convert dict to list once complete as we no longer need the keys.
-    return list(summary.values())
+    cleansed_summary = {}
+    for level, transitions in summary.items():
+        cleansed_summary[level] = list(transitions.values())
+
+    return cleansed_summary
 
 
 def print_bugs(bugs):
@@ -110,10 +117,11 @@ def print_bugs(bugs):
 
 def print_summary(bug_summary):
     table = prettytable.PrettyTable()
-    table.field_names = ['From', 'To', 'Count']
-    for summary in bug_summary:
-        table.add_row([summary['from'], summary['to'], summary['count']])
-    print(table.get_string(sortby='Count', reversesort=True))
+    table.field_names = ['Level', 'From', 'To', 'Count']
+    for level, transitions in bug_summary.items():
+        for transition in transitions:
+            table.add_row([str(level), transition['from'], transition['to'], transition['count']])
+    print(table.get_string(sortby='Level'))
 
 
 def get_date_from_str(date_str):
