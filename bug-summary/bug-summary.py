@@ -118,10 +118,18 @@ def print_bugs(bugs):
 def print_summary(bug_summary):
     table = prettytable.PrettyTable()
     table.field_names = ['Level', 'From', 'To', 'Count']
-    for level, transitions in bug_summary.items():
-        for transition in transitions:
-            table.add_row([str(level), transition['from'], transition['to'], transition['count']])
-    print(table.get_string(sortby='Level'))
+
+    first_level = True
+    for level, transitions in sorted(bug_summary.items()):
+        if not first_level:
+            table.add_row(['', '', '', ''])
+        first_level = False
+
+        table.add_row([str(level), transitions[0]['from'], transitions[0]['to'], transitions[0]['count']])
+        for transition in transitions[1:]:
+            table.add_row(['', transition['from'], transition['to'], transition['count']])
+
+    print(table.get_string())
 
 
 def get_date_from_str(date_str):
